@@ -43,17 +43,22 @@ args = parser.parse_args()
 
 
 if __name__ == "__main__":
-    if not args.deterministic:
-        cudnn.benchmark = True
+    
+    if not args.deterministic: #default=1
+        cudnn.benchmark = True 
         cudnn.deterministic = False
     else:
         cudnn.benchmark = False
         cudnn.deterministic = True
+    # benchmark mode is good whenever your input sizes for your network do not vary. 
+    # This way, cudnn will look for the optimal set of algorithms for that particular configuration (which takes some time). 
+    # This usually leads to faster runtime.
 
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
+
     dataset_name = args.dataset
     dataset_config = {
         'Synapse': {
