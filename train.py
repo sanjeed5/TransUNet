@@ -11,13 +11,13 @@ from trainer import trainer_synapse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
-                    default='../data/Synapse/train_npz', help='root dir for data')
+                    default='../data/CBIS-DDSM/train_npz', help='root dir for data')
 parser.add_argument('--dataset', type=str,
-                    default='Synapse', help='experiment_name')
+                    default='CBIS-DDSM', help='experiment_name')
 parser.add_argument('--list_dir', type=str,
-                    default='./lists/lists_Synapse', help='list dir')
+                    default='./lists/lists_cbis_ddsm', help='list dir')
 parser.add_argument('--num_classes', type=int,
-                    default=9, help='output channel of network')
+                    default=2, help='output channel of network')
 parser.add_argument('--max_iterations', type=int,
                     default=30000, help='maximum epoch number to train')
 parser.add_argument('--max_epochs', type=int,
@@ -61,11 +61,16 @@ if __name__ == "__main__":
 
     dataset_name = args.dataset
     dataset_config = {
-        'Synapse': {
-            'root_path': '../data/Synapse/train_npz',
-            'list_dir': './lists/lists_Synapse',
-            'num_classes': 9,
+        'CBIS-DDSM': {
+            'root_path': '../data/CBIS-DDSM/train_npz',
+            'list_dir': './lists/lists_cbis_ddsm',
+            'num_classes': 2,
         },
+        # 'Synapse': {
+        #     'root_path': '../data/Synapse/train_npz',
+        #     'list_dir': './lists/lists_Synapse',
+        #     'num_classes': 9,
+        # },
     }
     args.num_classes = dataset_config[dataset_name]['num_classes']
     args.root_path = dataset_config[dataset_name]['root_path']
