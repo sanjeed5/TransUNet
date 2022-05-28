@@ -60,6 +60,13 @@ def calculate_metric_percase(pred, gt):
 
 def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_save_path=None, case=None, z_spacing=1):
     image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
+
+    # In the 'else' block below, zoom doesn't happen, which causes errors. So, adding one to shape to make it go through the 'if block.
+    # if len(image.shape) == 2:
+    if image.shape[0] != patch_size[0] or image.shape[1] != patch_size[1]:
+        image = np.expand_dims(image, axis=0)
+        label = np.expand_dims(label, axis=0)
+        
     if len(image.shape) == 3:
         prediction = np.zeros_like(label)
         for ind in range(image.shape[0]):
@@ -88,7 +95,7 @@ def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_s
     metric_list = []
     for i in range(1, classes):
         metric_list.append(calculate_metric_percase(prediction == i, label == i))
-
+    
     if test_save_path is not None:
         img_itk = sitk.GetImageFromArray(image.astype(np.float32))
         prd_itk = sitk.GetImageFromArray(prediction.astype(np.float32))
