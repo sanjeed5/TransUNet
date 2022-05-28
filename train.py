@@ -11,7 +11,7 @@ from trainer import trainer_synapse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
-                    default='../data/CBIS-DDSM/train_npz', help='root dir for data')
+                    default='../data/CBIS-DDSM/Train_npz', help='root dir for data')
 parser.add_argument('--dataset', type=str,
                     default='CBIS-DDSM', help='experiment_name')
 parser.add_argument('--list_dir', type=str,
@@ -21,7 +21,7 @@ parser.add_argument('--num_classes', type=int,
 parser.add_argument('--max_iterations', type=int,
                     default=30000, help='maximum epoch number to train')
 parser.add_argument('--max_epochs', type=int,
-                    default=150, help='maximum epoch number to train')
+                    default=30, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int,
                     default=24, help='batch_size per gpu')
 parser.add_argument('--n_gpu', type=int, default=1, help='total gpu')
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     dataset_name = args.dataset
     dataset_config = {
         'CBIS-DDSM': {
-            'root_path': '../data/CBIS-DDSM/train_npz',
+            'root_path': '../data/CBIS-DDSM/Train_npz',
             'list_dir': './lists/lists_cbis_ddsm',
             'num_classes': 2,
         },
@@ -99,5 +99,5 @@ if __name__ == "__main__":
     net = ViT_seg(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
     net.load_from(weights=np.load(config_vit.pretrained_path))
 
-    trainer = {'Synapse': trainer_synapse,}
+    trainer = {'CBIS-DDSM': trainer_synapse,}
     trainer[dataset_name](args, net, snapshot_path)
