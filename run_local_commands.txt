@@ -1,0 +1,1 @@
+python test.py --dataset CBIS-DDSM --vit_name R50-ViT-B_16
