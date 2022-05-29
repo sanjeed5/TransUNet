@@ -10,7 +10,6 @@
 conda init bash
 module load anaconda3_2020
 source activate pytorch_transunet
-cat $PBS_O_WORKDIR
 cd /lfs/usrhome/btech/ed17b047/transunet/TransUNet
 
 jobid=`echo $PBS_JOBID | cut -f 1 -d .`
