@@ -135,6 +135,7 @@ if __name__ == "__main__":
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
     logging.info(str(args))
     logging.info(snapshot_name)
+    logging.info(snapshot)
 
     if args.is_savenii:
         args.test_save_dir = '../predictions'

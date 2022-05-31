@@ -22,6 +22,8 @@ parser.add_argument('--max_iterations', type=int,
                     default=30000, help='maximum epoch number to train')
 parser.add_argument('--max_epochs', type=int,
                     default=30, help='maximum epoch number to train')
+parser.add_argument('--val_interval', type=int,
+                    default=1, help='epoch intervals when val should run')
 parser.add_argument('--batch_size', type=int,
                     default=24, help='batch_size per gpu')
 parser.add_argument('--n_gpu', type=int, default=1, help='total gpu')
