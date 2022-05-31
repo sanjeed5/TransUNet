@@ -1,3 +1,10 @@
 .vscode/settings.json
 __pycache__/
 logs/
+train_local.err
+train_local.log
+local_logs/
+local_logs/
+local_logs/
+local_logs/
+test_log/
