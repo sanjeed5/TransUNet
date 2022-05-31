@@ -15,8 +15,8 @@ jobid=`echo $PBS_JOBID | cut -f 1 -d .`
 
 logfilename=$HOME/transunet/job_logs/train_$jobid
 
-CUDA_VISIBLE_DEVICES=0,1 CUDA_LAUNCH_BLOCKING=1 ~/.conda/envs/pytorch_transunet/bin/python -u '/lfs/usrhome/btech/ed17b047/transunet/TransUNet/train.py' --dataset CBIS-DDSM --root_path ../data/CBIS-DDSM/Train_npz --vit_name R50-ViT-B_16 &>> $logfilename.log 2>> $logfilename.err
+CUDA_VISIBLE_DEVICES=0,1 CUDA_LAUNCH_BLOCKING=1 ~/.conda/envs/pytorch_transunet/bin/python -u '/lfs/usrhome/btech/ed17b047/transunet/TransUNet/train.py' --dataset CBIS-DDSM --root_path ../data/CBIS-DDSM/Train_npz --vit_name R50-ViT-B_16 >> $logfilename.log 2>> $logfilename.err
 
 testlogfilename=$HOME/transunet/job_logs/test_$jobid
 
-CUDA_VISIBLE_DEVICES=0,1 CUDA_LAUNCH_BLOCKING=1 ~/.conda/envs/pytorch_transunet/bin/python -u '/lfs/usrhome/btech/ed17b047/transunet/TransUNet/test.py' --dataset CBIS-DDSM --vit_name R50-ViT-B_16 &>> $testlogfilename.log 2>> $testlogfilename.err
+CUDA_VISIBLE_DEVICES=0,1 CUDA_LAUNCH_BLOCKING=1 ~/.conda/envs/pytorch_transunet/bin/python -u '/lfs/usrhome/btech/ed17b047/transunet/TransUNet/test.py' --dataset CBIS-DDSM --vit_name R50-ViT-B_16 >> $testlogfilename.log 2>> $testlogfilename.err
