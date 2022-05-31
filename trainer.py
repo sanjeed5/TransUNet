@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tensorboardX import SummaryWriter
-from torch.nn.modules.loss import CrossEntropyLoss
+from torch.nn.modules.loss import CrossEntropyLoss, BCEWithLogitsLoss
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from utils import DiceLoss
@@ -53,6 +53,7 @@ def trainer_synapse(args, model, snapshot_path):
         model = nn.DataParallel(model)
     model.train()
     ce_loss = CrossEntropyLoss()
+    bce_loss = BCEWithLogitsLoss()
     dice_loss = DiceLoss(num_classes)
     optimizer = optim.SGD(model.parameters(), lr=base_lr, momentum=0.9, weight_decay=0.0001)
     writer = SummaryWriter(snapshot_path + '/log')
@@ -70,9 +71,10 @@ def trainer_synapse(args, model, snapshot_path):
             image_batch, label_batch = sampled_batch['image'], sampled_batch['label']
             image_batch, label_batch = image_batch.cuda(), label_batch.cuda()
             outputs = model(image_batch)
-            loss_ce = ce_loss(outputs, label_batch[:].long())
+            print("outputs.shape: ", outputs.shape, ", label_batch[:].long().shape: ", label_batch[:].long().shape)
+            loss_bce = bce_loss(outputs, label_batch[:].long())
             loss_dice = dice_loss(outputs, label_batch, softmax=True)
-            loss = 0.5 * loss_ce + 0.5 * loss_dice
+            loss = 0.5 * loss_bce + 0.5 * loss_dice
             train_loss_avg += loss.item()
 
             optimizer.zero_grad()
@@ -85,9 +87,9 @@ def trainer_synapse(args, model, snapshot_path):
             iter_num = iter_num + 1
             writer.add_scalar('info/lr', lr_, iter_num)
             writer.add_scalar('info/total_loss', loss, iter_num)
-            writer.add_scalar('info/loss_ce', loss_ce, iter_num)
+            writer.add_scalar('info/loss_ce', loss_bce, iter_num)
 
-            logging.info('iteration %d : loss : %f, loss_ce: %f' % (iter_num, loss.item(), loss_ce.item()))
+            logging.info('iteration %d : loss : %f, loss_ce: %f' % (iter_num, loss.item(), loss_bce.item()))
 
             if iter_num % 20 == 0:
                 image = image_batch[0, 0:1, :, :]
@@ -107,9 +109,9 @@ def trainer_synapse(args, model, snapshot_path):
                     image_batch, label_batch = sampled_batch['image'], sampled_batch['label']
                     image_batch, label_batch = image_batch.cuda(), label_batch.cuda()
                     outputs = model(image_batch)
-                    val_loss_ce = ce_loss(outputs, label_batch[:].long())
+                    val_loss_bce = bce_loss(outputs, label_batch[:].long())
                     val_loss_dice = dice_loss(outputs, label_batch, softmax=True)
-                    val_loss = 0.5 * val_loss_ce + 0.5 * val_loss_dice
+                    val_loss = 0.5 * val_loss_bce + 0.5 * val_loss_dice
                     val_loss_avg += val_loss.item()
                 
                 train_loss_avg = train_loss_avg/len(trainloader)
