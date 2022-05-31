@@ -1,0 +1,21 @@
+0it [00:00, ?it/s]0it [00:00, ?it/s]
+Traceback (most recent call last):
+  File "test.py", line 145, in <module>
+    inference(args, net, test_save_path)
+  File "test.py", line 55, in inference
+    test_save_path=test_save_path, case=case_name, z_spacing=args.z_spacing)
+  File "F:\DDP\_sanjeed_transunet\TransUNet\utils.py", line 96, in test_single_volume
+    out = torch.argmax(torch.softmax(net(input), dim=1), dim=1).squeeze(0)
+  File "D:\miniconda3\envs\pytorch_transunet\lib\site-packages\torch\nn\modules\module.py", line 532, in __call__
+    result = self.forward(*input, **kwargs)
+  File "F:\DDP\_sanjeed_transunet\TransUNet\networks\vit_seg_modeling.py", line 390, in forward
+    x, attn_weights, features = self.transformer(x)  # (B, n_patch, hidden)
+  File "D:\miniconda3\envs\pytorch_transunet\lib\site-packages\torch\nn\modules\module.py", line 532, in __call__
+    result = self.forward(*input, **kwargs)
+  File "F:\DDP\_sanjeed_transunet\TransUNet\networks\vit_seg_modeling.py", line 256, in forward
+    embedding_output, features = self.embeddings(input_ids)
+  File "D:\miniconda3\envs\pytorch_transunet\lib\site-packages\torch\nn\modules\module.py", line 532, in __call__
+    result = self.forward(*input, **kwargs)
+  File "F:\DDP\_sanjeed_transunet\TransUNet\networks\vit_seg_modeling.py", line 164, in forward
+    embeddings = x + self.position_embeddings
+RuntimeError: The size of tensor a (1024) must match the size of tensor b (196) at non-singleton dimension 1

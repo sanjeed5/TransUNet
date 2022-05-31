@@ -1,0 +1,20 @@
+Namespace(Dataset=<class 'datasets.dataset_synapse.Synapse_dataset'>, base_lr=0.01, batch_size=24, dataset='CBIS-DDSM', deterministic=1, exp='TU_CBIS-DDSM224', img_size=224, is_pretrain=True, is_savenii=False, list_dir='./lists/lists_cbis_ddsm', max_epochs=30, max_iterations=20000, n_skip=3, num_classes=2, seed=1234, test_save_dir='../predictions', vit_name='R50-ViT-B_16', vit_patches_size=16, volume_path='../data/CBIS-DDSM/Test_npz', z_spacing=1)
+TU_pretrain_R50-ViT-B_16_skip3_bs24_224
+361 test iterations per epoch
+in util testsinglevol image.shape, label.shape (512, 512) (512, 512)
+in util after unsquuze image.shape, label.shape (1, 512, 512) (512, 512)
+in Transforemer fwd input_ids.shape torch.Size([1, 3, 224, 224])
+vitsegmodeeling.py x embeddings shape: torch.Size([1, 196, 768]) torch.Size([1, 196, 768])
+
+---
+
+Namespace(Dataset=<class 'datasets.dataset_synapse.Synapse_dataset'>, base_lr=0.01, batch_size=24, dataset='CBIS-DDSM', deterministic=1, exp='TU_CBIS-DDSM224', img_size=224, is_pretrain=True, is_savenii=False, list_dir='./lists/lists_cbis_ddsm', max_epochs=30, max_iterations=20000, n_skip=3, num_classes=2, seed=1234, test_save_dir='../predictions', vit_name='R50-ViT-B_16', vit_patches_size=16, volume_path='../data/CBIS-DDSM/Test_npz', z_spacing=1)
+TU_pretrain_R50-ViT-B_16_skip3_bs24_224
+361 test iterations per epoch
+in util testsinglevol image.shape, label.shape (512, 512) (512, 512)
+in utils, input.shape  torch.Size([1, 1, 512, 512])
+in Transforemer fwd input_ids.shape torch.Size([1, 3, 512, 512])
+vitsegmodeeling.py x embeddings shape: torch.Size([1, 1024, 768]) torch.Size([1, 196, 768])
+
+---
+
