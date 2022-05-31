@@ -1,3 +1,5 @@
 python test.py --dataset CBIS-DDSM --vit_name R50-ViT-B_16
 
 python -u test.py --dataset CBIS-DDSM --vit_name R50-ViT-B_16 >> test_local.log 2>> test_local.err
+
+python -u test.py --dataset CBIS-DDSM --vit_name R50-ViT-B_16 --is_savenii 1 >> test_local.log 2>> test_local.err
