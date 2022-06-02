@@ -8,6 +8,48 @@ import torch.backends.cudnn as cudnn
 from networks.vit_seg_modeling import VisionTransformer as ViT_seg
 from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
 from trainer import trainer_synapse
+import wandb
+
+# TODO: Remove these wandb lines
+wandb.init(project="cbisddsm", entity="sanjeed1722")
+
+wandb.config = {
+  "learning_rate": 0.001,
+  "epochs": 100,
+  "batch_size": 128
+}
+
+wandb.log({"loss": loss})
+
+# Optional
+wandb.watch(model)
+
+sweep_config = {
+    'method': 'random'
+}   
+
+metric = {
+    'name': 'loss',
+    'goal': 'minimize'   
+}
+
+parameters_dict = {
+    'optimizer': {
+        'values': ['adam', 'sgd']
+    },
+    'fc_layer_size': {
+        'values': [128, 256, 512]
+    },
+    'dropout': {
+          'values': [0.3, 0.4, 0.5]
+    },
+}
+
+sweep_config['parameters'] = parameters_dict
+
+sweep_config['metric'] = metric
+
+wandb.log({'epoch': epoch, 'loss': running_loss})
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
