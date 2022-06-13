@@ -1,11 +1,10 @@
 import wandb
 from train import train
 
-
 sweep_config = {
   "entity": "sanjeed1722",
   "project": "cbisddsm",
-  "method": "random",
+  "method": "bayes",
   "metric": {
     "name": "test_dice",
     "goal": "maximize"
@@ -33,8 +32,8 @@ sweep_config = {
 }
 
 # sweep_id = wandb.sweep(sweep_config, project="cbisddsm", entity="sanjeed1722")
-print("sweep_id", '2sdcgjlg')
+print("sweep_id", 'r07jlmeh')
 
-wandb.agent('sanjeed1722/cbisddsm/2sdcgjlg', train)
+wandb.agent('sanjeed1722/cbisddsm/r07jlmeh', train)
 
 
