@@ -8,12 +8,16 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
 from torch.nn.modules.loss import CrossEntropyLoss
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from utils import DiceLoss
 from torchvision import transforms
+import wandb
+
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
+os.environ["CUDA_LAUNCH_BLOCKING"]="1"
 
 def trainer_synapse(args, model, snapshot_path):
     from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
@@ -48,14 +52,24 @@ def trainer_synapse(args, model, snapshot_path):
                              worker_init_fn=worker_init_fn)
 
     print(f"\nLength of dataset: {len(db_train)}, train: {train_size}, val: {val_size}")
+    logging.info(f"\nLength of dataset: {len(db_train)}, train: {train_size}, val: {val_size}\n")
+
 
     if args.n_gpu > 1:
         model = nn.DataParallel(model)
     model.train()
     ce_loss = CrossEntropyLoss()
+    class_weights = torch.tensor([0.1, 1.0]).cuda()
+    cew_loss = CrossEntropyLoss(weight=class_weights) 
     dice_loss = DiceLoss(num_classes)
-    optimizer = optim.SGD(model.parameters(), lr=base_lr, momentum=0.9, weight_decay=0.0001)
-    writer = SummaryWriter(snapshot_path + '/log')
+    # optimizer = optim.SGD(model.parameters(), lr=base_lr, momentum=0.9, weight_decay=0.0001)
+
+    if args.optimizer == "sgd":
+        optimizer = optim.SGD(model.parameters(), lr=base_lr, momentum=0.9, weight_decay=0.0001)
+    elif args.optimizer == "adam":
+        optimizer = optim.Adam(model.parameters(), lr=base_lr)
+
+    # writer = SummaryWriter(snapshot_path + '/log')
     iter_num = 0
     max_epoch = args.max_epochs
     max_iterations = args.max_epochs * len(trainloader)  # max_epoch = max_iterations // len(trainloader) + 1
@@ -64,6 +78,9 @@ def trainer_synapse(args, model, snapshot_path):
     min_valid_loss = np.inf
     min_valid_loss_epoch = 0
     iterator = tqdm(range(max_epoch), ncols=70)
+
+    # wandb.watch(model, log="all")
+
     for epoch_num in iterator:
         train_loss_avg = 0
         for i_batch, sampled_batch in enumerate(trainloader):
@@ -72,7 +89,13 @@ def trainer_synapse(args, model, snapshot_path):
             outputs = model(image_batch)
             loss_ce = ce_loss(outputs, label_batch[:].long())
             loss_dice = dice_loss(outputs, label_batch, softmax=True)
-            loss = 0.5 * loss_ce + 0.5 * loss_dice
+            loss_cew = cew_loss(outputs, label_batch[:].long())
+
+            if args.dice_ce_split >= 2: # For class-weighted cross entropy (2-3) 3=dice, 2=cew
+                split = args.dice_ce_split - 2
+                loss = (1 - split) * loss_cew + split * loss_dice
+            else:
+                loss = (1 - args.dice_ce_split) * loss_ce + args.dice_ce_split * loss_dice
             train_loss_avg += loss.item()
 
             optimizer.zero_grad()
@@ -83,20 +106,20 @@ def trainer_synapse(args, model, snapshot_path):
                 param_group['lr'] = lr_
 
             iter_num = iter_num + 1
-            writer.add_scalar('info/lr', lr_, iter_num)
-            writer.add_scalar('info/total_loss', loss, iter_num)
-            writer.add_scalar('info/loss_ce', loss_ce, iter_num)
+            # writer.add_scalar('info/lr', lr_, iter_num)
+            # writer.add_scalar('info/total_loss', loss, iter_num)
+            # writer.add_scalar('info/loss_ce', loss_ce, iter_num)
 
-            logging.info('iteration %d : loss : %f, loss_ce: %f' % (iter_num, loss.item(), loss_ce.item()))
+            logging.info('iteration %d : loss : %f, loss_dice: %f, loss_ce: %f, loss_cew: %f' % (iter_num, loss.item(), loss_dice.item(), loss_ce.item(), loss_cew.item()))
 
             if iter_num % 20 == 0:
                 image = image_batch[0, 0:1, :, :]
                 image = (image - image.min()) / (image.max() - image.min())
-                writer.add_image('train/Image', image, iter_num)
+                # writer.add_image('train/Image', image, iter_num)
                 outputs = torch.argmax(torch.softmax(outputs, dim=1), dim=1, keepdim=True)
-                writer.add_image('train/Prediction', outputs[0, ...] * 50, iter_num)
+                # writer.add_image('train/Prediction', outputs[0, ...] * 50, iter_num)
                 labs = label_batch[0, ...].unsqueeze(0) * 50
-                writer.add_image('train/GroundTruth', labs, iter_num)
+                # writer.add_image('train/GroundTruth', labs, iter_num)
 
         # Validation loop
         val_loss_avg = 0
@@ -109,19 +132,27 @@ def trainer_synapse(args, model, snapshot_path):
                     outputs = model(image_batch)
                     val_loss_ce = ce_loss(outputs, label_batch[:].long())
                     val_loss_dice = dice_loss(outputs, label_batch, softmax=True)
-                    val_loss = 0.5 * val_loss_ce + 0.5 * val_loss_dice
+                    val_loss_cew = cew_loss(outputs, label_batch[:].long())
+                    if args.dice_ce_split >= 2: # For class-weighted cross entropy (2-3) 3=dice, 2=cew
+                        split = args.dice_ce_split - 2
+                        val_loss = (1 - split) * val_loss_cew + split * val_loss_dice
+                    else:
+                        val_loss = (1 - args.dice_ce_split) * val_loss_ce + args.dice_ce_split * val_loss_dice
+
                     val_loss_avg += val_loss.item()
                 
                 train_loss_avg = train_loss_avg/len(trainloader)
                 val_loss_avg = val_loss_avg/len(val_loader)
                 logging.info('epoch %d : avg_train_loss : %f, avg_val_loss: %f' % (epoch_num, train_loss_avg, val_loss_avg))
 
-                writer.add_scalar('info/val_loss', val_loss_avg, epoch_num)
+                # writer.add_scalar('info/val_loss', val_loss_avg, epoch_num)
                 
-                writer.add_scalars(f'loss', {
-                            'train_loss': train_loss_avg,
-                            'val_loss': val_loss_avg,
-                        }, epoch_num)
+                # writer.add_scalars(f'loss', {
+                        #     'train_loss': train_loss_avg,
+                        #     'val_loss': val_loss_avg,
+                        # }, epoch_num)
+
+                wandb.log({'epoch': epoch_num, 'train_loss': train_loss_avg, 'val_loss': val_loss_avg})
 
                 if min_valid_loss > val_loss_avg:
                     min_valid_loss = val_loss_avg
@@ -131,7 +162,6 @@ def trainer_synapse(args, model, snapshot_path):
                     torch.save(model.state_dict(), save_mode_path)
                     logging.info("save model to {}".format(save_mode_path))
 
-        
         save_interval = 50  # int(max_epoch/6)
         if epoch_num > int(max_epoch / 2) and (epoch_num + 1) % save_interval == 0:
             save_mode_path = os.path.join(snapshot_path, 'epoch_' + str(epoch_num) + '.pth')
@@ -146,6 +176,9 @@ def trainer_synapse(args, model, snapshot_path):
             break
     
     logging.info(f"\nLowest validation loss: {min_valid_loss:.3f} at epoch number: {min_valid_loss_epoch}")
+    wandb.run.summary["lowest_validation_loss"] = min_valid_loss
+    wandb.run.summary["lowest_validation_epoch"] = min_valid_loss_epoch
 
-    writer.close()
+
+    # writer.close()
     return "Training Finished!"
