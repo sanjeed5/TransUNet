@@ -9,143 +9,155 @@ from networks.vit_seg_modeling import VisionTransformer as ViT_seg
 from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
 from trainer import trainer_synapse
 import wandb
+from test_cont import test_func
 
-# TODO: Remove these wandb lines
-wandb.init(project="cbisddsm", entity="sanjeed1722")
 
-wandb.config = {
-  "learning_rate": 0.001,
-  "epochs": 100,
-  "batch_size": 128
-}
+def train(sweep=True):   
 
-wandb.log({"loss": loss})
+    with wandb.init(project="cbisddsm", entity="sanjeed1722"):
 
-# Optional
-wandb.watch(model)
+        os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
+        os.environ["CUDA_LAUNCH_BLOCKING"]="1"
 
-sweep_config = {
-    'method': 'random'
-}   
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--root_path', type=str,
+                            default='../data/CBIS-DDSM/Train_npz', help='root dir for data')
+        parser.add_argument('--dataset', type=str,
+                            default='CBIS-DDSM', help='experiment_name')
+        parser.add_argument('--list_dir', type=str,
+                            default='./lists/lists_cbis_ddsm', help='list dir')
+        parser.add_argument('--num_classes', type=int,
+                            default=2, help='output channel of network')
+        parser.add_argument('--max_iterations', type=int,
+                            default=30000, help='maximum epoch number to train')
+        parser.add_argument('--max_epochs', type=int,
+                            default=30, help='maximum epoch number to train')
+        parser.add_argument('--val_interval', type=int,
+                            default=1, help='epoch intervals when val should run')
+        parser.add_argument('--batch_size', type=int,
+                            default=24, help='batch_size per gpu')
+        parser.add_argument('--n_gpu', type=int, default=1, help='total gpu')
+        parser.add_argument('--deterministic', type=int,  default=1,
+                            help='whether use deterministic training')
+        parser.add_argument('--base_lr', type=float,  default=0.01,
+                            help='segmentation network learning rate')
+        parser.add_argument('--img_size', type=int,
+                            default=224, help='input patch size of network input')
+        parser.add_argument('--seed', type=int,
+                            default=1234, help='random seed')
+        parser.add_argument('--n_skip', type=int,
+                            default=3, help='using number of skip-connect, default is num')
+        parser.add_argument('--vit_name', type=str,
+                            default='R50-ViT-B_16', help='select one vit model')
+        parser.add_argument('--vit_patches_size', type=int,
+                            default=16, help='vit_patches_size, default is 16')
+        parser.add_argument('--optimizer', type=str,
+                            default='adam', help='optimizer can be sgd or adam')
+        parser.add_argument('--dice_ce_split', type=float,
+                            default='0.5', help='split between dice and ce for loss')
+        parser.add_argument('--comment', type=str,
+                            default='', help='comment to add in file name of model, when trying out something new')
+        ### test args
+        parser.add_argument('--volume_path', type=str,
+                            default='../data/CBIS-DDSM/Test_npz', help='root dir for validation volume data')
+        parser.add_argument('--is_savenii', action="store_true", help='whether to save results during inference')
+        parser.add_argument('--test_save_dir', type=str, default='../predictions', help='saving prediction as nii!')
 
-metric = {
-    'name': 'loss',
-    'goal': 'minimize'   
-}
+        args = parser.parse_args()
 
-parameters_dict = {
-    'optimizer': {
-        'values': ['adam', 'sgd']
-    },
-    'fc_layer_size': {
-        'values': [128, 256, 512]
-    },
-    'dropout': {
-          'values': [0.3, 0.4, 0.5]
-    },
-}
+        ### WandB config
 
-sweep_config['parameters'] = parameters_dict
+        default_config = {
+            "max_epochs": args.max_epochs,
+            "batch_size": args.batch_size,
+            "img_size": args.img_size,
+            "n_skip": args.n_skip,
+            "vit_name": args.vit_name,
+            "vit_patches_size": args.vit_patches_size,
+            "comment": args.comment
+        }
 
-sweep_config['metric'] = metric
+        # wandb.init(config=default_config, project="cbisddsm", entity="sanjeed1722")
+        wandb.config.update(default_config)
 
-wandb.log({'epoch': epoch, 'loss': running_loss})
+        if sweep:
+            try:
+                args.base_lr = wandb.config.base_lr
+                args.optimizer = wandb.config.optimizer
+                args.dice_ce_split = wandb.config.dice_ce_split 
+            except:
+                sweep=False
+        
+        if not sweep:
+            wandb.config.base_lr = args.base_lr
+            wandb.config.optimizer = args.optimizer
+            wandb.config.dice_ce_split = args.dice_ce_split
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str,
-                    default='../data/CBIS-DDSM/Train_npz', help='root dir for data')
-parser.add_argument('--dataset', type=str,
-                    default='CBIS-DDSM', help='experiment_name')
-parser.add_argument('--list_dir', type=str,
-                    default='./lists/lists_cbis_ddsm', help='list dir')
-parser.add_argument('--num_classes', type=int,
-                    default=2, help='output channel of network')
-parser.add_argument('--max_iterations', type=int,
-                    default=30000, help='maximum epoch number to train')
-parser.add_argument('--max_epochs', type=int,
-                    default=30, help='maximum epoch number to train')
-parser.add_argument('--val_interval', type=int,
-                    default=1, help='epoch intervals when val should run')
-parser.add_argument('--batch_size', type=int,
-                    default=24, help='batch_size per gpu')
-parser.add_argument('--n_gpu', type=int, default=1, help='total gpu')
-parser.add_argument('--deterministic', type=int,  default=1,
-                    help='whether use deterministic training')
-parser.add_argument('--base_lr', type=float,  default=0.01,
-                    help='segmentation network learning rate')
-parser.add_argument('--img_size', type=int,
-                    default=224, help='input patch size of network input')
-parser.add_argument('--seed', type=int,
-                    default=1234, help='random seed')
-parser.add_argument('--n_skip', type=int,
-                    default=3, help='using number of skip-connect, default is num')
-parser.add_argument('--vit_name', type=str,
-                    default='R50-ViT-B_16', help='select one vit model')
-parser.add_argument('--vit_patches_size', type=int,
-                    default=16, help='vit_patches_size, default is 16')
-parser.add_argument('--comment', type=str,
-                    default='', help='comment to add in file name of model, when trying out something new')
+        if not args.deterministic: #default=1
+            cudnn.benchmark = True 
+            cudnn.deterministic = False
+        else:
+            cudnn.benchmark = False
+            cudnn.deterministic = True
+        # benchmark mode is good whenever your input sizes for your network do not vary. 
+        # This way, cudnn will look for the optimal set of algorithms for that particular configuration (which takes some time). 
+        # This usually leads to faster runtime.
 
-args = parser.parse_args()
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed(args.seed)
+
+        dataset_name = args.dataset
+        dataset_config = {
+            'CBIS-DDSM': {
+                'root_path': '../data/CBIS-DDSM/Train_npz',
+                'list_dir': './lists/lists_cbis_ddsm',
+                'num_classes': 2,
+            },
+            # 'Synapse': {
+            #     'root_path': '../data/Synapse/train_npz',
+            #     'list_dir': './lists/lists_Synapse',
+            #     'num_classes': 9,
+            # },
+        }
+        args.num_classes = dataset_config[dataset_name]['num_classes']
+        args.root_path = dataset_config[dataset_name]['root_path']
+        args.list_dir = dataset_config[dataset_name]['list_dir']
+        args.is_pretrain = True
+        args.exp = 'TU_' + dataset_name + str(args.img_size)
+        # snapshot_path = "../model/{}/{}".format(args.exp, 'TU')
+        snapshot_path = " /lfs/usrhome/btech/ed17b047/scratch/transunet/model/{}/{}".format(args.exp, 'TU')
+        snapshot_path = snapshot_path + '_pretrain' if args.is_pretrain else snapshot_path
+        snapshot_path += '_' + args.vit_name
+        snapshot_path = snapshot_path + '_skip' + str(args.n_skip)
+        snapshot_path = snapshot_path + '_vitpatch' + str(args.vit_patches_size) if args.vit_patches_size!=16 else snapshot_path
+        snapshot_path = snapshot_path+'_'+str(args.max_iterations)[0:2]+'k' if args.max_iterations != 30000 else snapshot_path
+        snapshot_path = snapshot_path + '_epo' +str(args.max_epochs) if args.max_epochs != 30 else snapshot_path
+        snapshot_path = snapshot_path+'_bs'+str(args.batch_size)
+        snapshot_path = snapshot_path + '_lr' + str(args.base_lr) if args.base_lr != 0.01 else snapshot_path
+        snapshot_path = snapshot_path + '_'+str(args.img_size)
+        snapshot_path = snapshot_path + '_s'+str(args.seed) if args.seed!=1234 else snapshot_path
+        snapshot_path = snapshot_path + '_dc'+str(args.dice_ce_split) if args.dice_ce_split!=0.5 else snapshot_path
+        snapshot_path = snapshot_path + '_'+str(args.comment) if args.seed!='' else snapshot_path
+
+        wandb.config.snapshot_path = snapshot_path
+
+        if not os.path.exists(snapshot_path):
+            os.makedirs(snapshot_path)
+        config_vit = CONFIGS_ViT_seg[args.vit_name]
+        config_vit.n_classes = args.num_classes
+        config_vit.n_skip = args.n_skip
+        if args.vit_name.find('R50') != -1:
+            config_vit.patches.grid = (int(args.img_size / args.vit_patches_size), int(args.img_size / args.vit_patches_size))
+        net = ViT_seg(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
+        net.load_from(weights=np.load(config_vit.pretrained_path))
+
+        trainer = {'CBIS-DDSM': trainer_synapse,}
+        trainer[dataset_name](args, net, snapshot_path)
+        test_func(args, sweep)
+
 
 
 if __name__ == "__main__":
-    
-    if not args.deterministic: #default=1
-        cudnn.benchmark = True 
-        cudnn.deterministic = False
-    else:
-        cudnn.benchmark = False
-        cudnn.deterministic = True
-    # benchmark mode is good whenever your input sizes for your network do not vary. 
-    # This way, cudnn will look for the optimal set of algorithms for that particular configuration (which takes some time). 
-    # This usually leads to faster runtime.
-
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
-
-    dataset_name = args.dataset
-    dataset_config = {
-        'CBIS-DDSM': {
-            'root_path': '../data/CBIS-DDSM/Train_npz',
-            'list_dir': './lists/lists_cbis_ddsm',
-            'num_classes': 2,
-        },
-        # 'Synapse': {
-        #     'root_path': '../data/Synapse/train_npz',
-        #     'list_dir': './lists/lists_Synapse',
-        #     'num_classes': 9,
-        # },
-    }
-    args.num_classes = dataset_config[dataset_name]['num_classes']
-    args.root_path = dataset_config[dataset_name]['root_path']
-    args.list_dir = dataset_config[dataset_name]['list_dir']
-    args.is_pretrain = True
-    args.exp = 'TU_' + dataset_name + str(args.img_size)
-    snapshot_path = "../model/{}/{}".format(args.exp, 'TU')
-    snapshot_path = snapshot_path + '_pretrain' if args.is_pretrain else snapshot_path
-    snapshot_path += '_' + args.vit_name
-    snapshot_path = snapshot_path + '_skip' + str(args.n_skip)
-    snapshot_path = snapshot_path + '_vitpatch' + str(args.vit_patches_size) if args.vit_patches_size!=16 else snapshot_path
-    snapshot_path = snapshot_path+'_'+str(args.max_iterations)[0:2]+'k' if args.max_iterations != 30000 else snapshot_path
-    snapshot_path = snapshot_path + '_epo' +str(args.max_epochs) if args.max_epochs != 30 else snapshot_path
-    snapshot_path = snapshot_path+'_bs'+str(args.batch_size)
-    snapshot_path = snapshot_path + '_lr' + str(args.base_lr) if args.base_lr != 0.01 else snapshot_path
-    snapshot_path = snapshot_path + '_'+str(args.img_size)
-    snapshot_path = snapshot_path + '_s'+str(args.seed) if args.seed!=1234 else snapshot_path
-    snapshot_path = snapshot_path + '_'+str(args.comment) if args.seed!='' else snapshot_path
-
-    if not os.path.exists(snapshot_path):
-        os.makedirs(snapshot_path)
-    config_vit = CONFIGS_ViT_seg[args.vit_name]
-    config_vit.n_classes = args.num_classes
-    config_vit.n_skip = args.n_skip
-    if args.vit_name.find('R50') != -1:
-        config_vit.patches.grid = (int(args.img_size / args.vit_patches_size), int(args.img_size / args.vit_patches_size))
-    net = ViT_seg(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
-    net.load_from(weights=np.load(config_vit.pretrained_path))
-
-    trainer = {'CBIS-DDSM': trainer_synapse,}
-    trainer[dataset_name](args, net, snapshot_path)
+    train()
